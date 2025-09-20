@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  background-color: #020617;
+}
+
+body {
+  @apply bg-slate-950 text-slate-100 font-sans;
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
