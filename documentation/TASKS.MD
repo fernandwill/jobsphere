@@ -21,9 +21,10 @@ The goal of this phase is to initialize the project, set up the database, and im
     - Add Google and GitHub credentials to `.env` and `config/services.php`.
     - Create routes and controller methods for handling the OAuth redirect and callback.
     - Modify the default user migration if needed.
-- [ ] **6. Set Up Frontend Scaffolding:**
-    - Install and configure Inertia.js with Vue or React.
-    - Install Tailwind CSS and initialize Material UI.
+- [v] **6. Set Up Frontend Scaffolding:**
+    - Implemented a standalone Vite + React SPA with Tailwind CSS.
+    - Established component architecture (e.g., pipeline board, stats grid, scrape panel) powered by mock data.
+    - _Note:_ Material UI/Inertia.js were not adopted; custom Tailwind styling is in place instead.
 
 ---
 
@@ -60,9 +61,11 @@ This phase involves creating the system for users to track their job application
     - Write the controller logic to store the new application in the database.
 - [ ] **4. Build Application List UI:**
     - Create a component to display all tracked applications for the logged-in user.
+    - _Status:_ React components (`PipelineBoard`, `RecentApplications`) exist with mock data; real data wiring is pending.
 - [ ] **5. Implement Status Updates:**
     - Add a dropdown or Kanban board interface to allow users to update the status of each application.
     - Create the backend route and controller method to handle the status update.
+    - _Status:_ Frontend board layout exists, but drag-and-drop/status mutation logic and API endpoints are not yet built.
 
 ---
 
@@ -80,6 +83,7 @@ This phase is about creating the main dashboard to visualize the user's job sear
     - Create Vue/React components for the dashboard layout.
     - Implement a pie chart for application statuses.
     - Implement a bar chart for applications per week/month.
+    - _Status:_ Core layout components (header, stats cards, pipeline board, activity timeline) are in place using mock data; charting work remains.
 
 ---
 
