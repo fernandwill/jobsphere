@@ -8,22 +8,22 @@ This document outlines the development tasks required to build the application, 
 
 The goal of this phase is to initialize the project, set up the database, and implement user authentication.
 
-- [ ] **1. Initialize Laravel Project:**
+- [v] **1. Initialize Laravel Project:**
     - `composer create-project laravel/jobsphere`
-- [ ] **2. Configure Environment:**
+- [v] **2. Configure Environment:**
     - Set up the `.env` file with app details and a local database connection.
-- [ ] **3. Set Up Database:**
+- [v] **3. Set Up Database:**
     - Create a new MySQL or PostgreSQL database.
     - Run the initial `php artisan migrate` command to verify the connection.
-- [ ] **4. Install Laravel Socialite:**
+- [v] **4. Install Laravel Socialite:**
     - `composer require laravel/socialite`
-- [ ] **5. Implement Social Authentication:**
+- [v] **5. Implement Social Authentication:**
     - Add Google and GitHub credentials to `.env` and `config/services.php`.
     - Create routes and controller methods for handling the OAuth redirect and callback.
     - Modify the default user migration if needed.
 - [ ] **6. Set Up Frontend Scaffolding:**
     - Install and configure Inertia.js with Vue or React.
-    - Install Tailwind CSS and initialize Shadcn/UI.
+    - Install Tailwind CSS and initialize Material UI.
 
 ---
 
