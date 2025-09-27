@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ScrapeRequest;
+use App\Support\ApplicationReportBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,10 +17,18 @@ class DashboardController extends Controller
             ->recent()
             ->get();
 
+        $applications = $request->user()
+            ?->applications()
+            ->latest('last_activity_at')
+            ->latest()
+            ->get() ?? collect();
+
+        $report = ApplicationReportBuilder::fromCollection($applications);
+
         return Inertia::render('Dashboard', [
             'stats' => $this->buildStats($requests),
-            'pipeline' => $this->buildPipeline($requests),
-            'activity' => $this->buildActivity($requests),
+            'pipeline' => $report->pipeline(),
+            'activity' => $report->activity(),
             'followUps' => $this->buildFollowUps($requests),
         ]);
     }
@@ -55,56 +63,6 @@ class DashboardController extends Controller
                 'icon' => 'interviews',
             ],
         ];
-    }
-
-    protected function buildPipeline($requests): array
-    {
-        $descriptions = [
-            'queued' => 'Waiting for worker availability',
-            'running' => 'Currently crawling sources',
-            'succeeded' => 'Review newly discovered roles',
-            'failed' => 'Check logs and retry scrape',
-        ];
-
-        return collect(['queued', 'running', 'succeeded', 'failed'])
-            ->map(function (string $status) use ($requests, $descriptions) {
-                $items = $requests->where('status', $status);
-
-                return [
-                    'stage' => $status,
-                    'summary' => $descriptions[$status] ?? 'Status update',
-                    'count' => $items->count(),
-                    'jobs' => $items->take(4)->map(function (ScrapeRequest $request) use ($status) {
-                        $latestResult = $request->results->sortByDesc('created_at')->first();
-                        $timestamp = $request->started_at ?? $request->queued_at;
-
-                        return [
-                            'role' => $latestResult?->title ?? sprintf('%s opportunities', Str::headline($request->keyword)),
-                            'company' => $latestResult?->company ?? Str::headline($request->keyword),
-                            'status' => Str::headline($status),
-                            'applied_at' => optional($timestamp)->diffForHumans() ?? 'just now',
-                        ];
-                    })->values(),
-                ];
-            })
-            ->values()
-            ->all();
-    }
-
-    protected function buildActivity($requests): array
-    {
-        $results = $requests
-            ->flatMap(fn (ScrapeRequest $request) => $request->results)
-            ->sortByDesc('created_at')
-            ->take(5);
-
-        return $results->map(function ($result) {
-            return [
-                'title' => $result->title,
-                'description' => sprintf('Found via %s search', Str::headline(optional($result->request)->keyword ?? 'scraper')),
-                'timestamp' => optional($result->created_at)->diffForHumans() ?? 'just now',
-            ];
-        })->values()->all();
     }
 
     protected function buildFollowUps($requests): array

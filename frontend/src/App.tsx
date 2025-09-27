@@ -1,22 +1,35 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import ActivityTimeline from './components/ActivityTimeline';
 import DashboardHeader from './components/DashboardHeader';
 import PipelineBoard from './components/PipelineBoard';
 import RecentApplications from './components/RecentApplications';
 import ScrapeJobsPanel from './components/ScrapeJobsPanel';
 import StatsGrid from './components/StatsGrid';
-import ActivityTimeline from './components/ActivityTimeline';
-import {
-  MOCK_ACTIVITY,
-  MOCK_APPLICATIONS,
-  MOCK_METRICS,
-} from './data/mock';
-import type { ScrapeJob } from './types';
+import { fetchApplications, type ApplicationsResponse } from './data/mock';
+import type { ActivityLogItem, JobApplication, ScrapeJob } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+
+const DEFAULT_COUNTS: ApplicationsResponse['counts'] = {
+  total: 0,
+  byStatus: {
+    applied: 0,
+    online_assessment: 0,
+    interview: 0,
+    passed: 0,
+    rejected: 0,
+  },
+};
 
 const App = () => {
   const [scrapeJobs, setScrapeJobs] = useState<ScrapeJob[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [activity, setActivity] = useState<ActivityLogItem[]>([]);
+  const [counts, setCounts] = useState<ApplicationsResponse['counts']>({
+    total: DEFAULT_COUNTS.total,
+    byStatus: { ...DEFAULT_COUNTS.byStatus },
+  });
 
   const fetchScrapeJobs = useCallback(async () => {
     try {
@@ -59,10 +72,59 @@ const App = () => {
     return () => window.clearInterval(interval);
   }, [fetchScrapeJobs]);
 
+  const loadApplications = useCallback(async () => {
+    try {
+      const payload = await fetchApplications();
+
+      setApplications(payload.applications);
+      setActivity(payload.activity);
+      setCounts({
+        total: payload.counts?.total ?? payload.applications.length,
+        byStatus: {
+          ...DEFAULT_COUNTS.byStatus,
+          ...(payload.counts?.byStatus ?? {}),
+        },
+      });
+    } catch (error) {
+      console.error('Failed to load applications', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadApplications();
+  }, [loadApplications]);
+
   const pendingScrapes = useMemo(
     () => scrapeJobs.filter((job) => ['queued', 'running'].includes(job.status)).length,
     [scrapeJobs]
   );
+
+  const metrics = useMemo(() => {
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+
+    const applicationsThisWeek = applications.filter((application) => {
+      if (!application.postedAt) return false;
+      const posted = new Date(application.postedAt);
+      return posted >= weekAgo;
+    }).length;
+
+    const total = counts.total || applications.length;
+    const interviews = counts.byStatus.interview ?? 0;
+    const responses = total - (counts.byStatus.applied ?? 0);
+    const responseRate = total > 0 ? Math.round((responses / total) * 100) : 0;
+    const offerRate = interviews > 0
+      ? Math.round(((counts.byStatus.passed ?? 0) / interviews) * 100)
+      : 0;
+
+    return {
+      applicationsThisWeek,
+      interviewsScheduled: interviews,
+      responseRate,
+      offerRate,
+    };
+  }, [applications, counts]);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
@@ -71,17 +133,17 @@ const App = () => {
 
       <main className="relative mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 pb-16 pt-12">
         <DashboardHeader userName="Alex" pendingScrapes={pendingScrapes} />
-        <StatsGrid metrics={MOCK_METRICS} />
+        <StatsGrid metrics={metrics} />
 
         <div className="grid gap-6 xl:grid-cols-[2fr_1fr] xl:items-start">
           <div className="flex flex-col gap-6">
-            <PipelineBoard applications={MOCK_APPLICATIONS} />
-            <RecentApplications data={MOCK_APPLICATIONS} />
+            <PipelineBoard applications={applications} />
+            <RecentApplications data={applications} />
           </div>
 
           <div className="flex flex-col gap-6">
             <ScrapeJobsPanel jobs={scrapeJobs} refreshing={refreshing} onRefresh={fetchScrapeJobs} />
-            <ActivityTimeline items={MOCK_ACTIVITY} />
+            <ActivityTimeline items={activity} />
           </div>
         </div>
       </main>
