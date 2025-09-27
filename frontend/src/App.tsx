@@ -5,6 +5,7 @@ import PipelineBoard from './components/PipelineBoard';
 import RecentApplications from './components/RecentApplications';
 import ScrapeJobsPanel from './components/ScrapeJobsPanel';
 import StatsGrid from './components/StatsGrid';
+import AnalyticsCharts from './components/AnalyticsCharts';
 import { fetchApplications, type ApplicationsResponse } from './data/mock';
 import type { ActivityLogItem, JobApplication, ScrapeJob } from './types';
 
@@ -134,6 +135,7 @@ const App = () => {
       <main className="relative mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 pb-16 pt-12">
         <DashboardHeader userName="Alex" pendingScrapes={pendingScrapes} />
         <StatsGrid metrics={metrics} />
+        <AnalyticsCharts counts={counts} applications={applications} />
 
         <div className="grid gap-6 xl:grid-cols-[2fr_1fr] xl:items-start">
           <div className="flex flex-col gap-6">

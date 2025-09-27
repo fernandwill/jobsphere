@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ApplicationStatus;
+use App\Models\Application;
 use App\Models\ScrapeRequest;
 use App\Support\ApplicationReportBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,6 +33,8 @@ class DashboardController extends Controller
             'pipeline' => $report->pipeline(),
             'activity' => $report->activity(),
             'followUps' => $this->buildFollowUps($requests),
+            'statusDistribution' => $this->statusDistribution($applications),
+            'applicationsByPeriod' => $this->applicationsByPeriod($applications),
         ]);
     }
 
@@ -81,6 +86,67 @@ class DashboardController extends Controller
                     'company' => $result->company ?? 'Unknown',
                     'due_in' => $dueIn,
                     'completion' => 30 + ($index * 25),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param Collection<int, Application> $applications
+     * @return array<int, array{status: string, label: string, count: int}>
+     */
+    protected function statusDistribution(Collection $applications): array
+    {
+        return collect(ApplicationStatus::cases())
+            ->map(function (ApplicationStatus $status) use ($applications) {
+                $count = $applications
+                    ->filter(fn (Application $application) => $application->status === $status)
+                    ->count();
+
+                return [
+                    'status' => $status->value,
+                    'label' => $status->label(),
+                    'count' => $count,
+                ];
+            })
+            ->filter(fn (array $item) => $item['count'] > 0)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param Collection<int, Application> $applications
+     * @return array<int, array{period: string, label: string, count: int}>
+     */
+    protected function applicationsByPeriod(Collection $applications, int $months = 6): array
+    {
+        $buckets = $applications->reduce(function (array $carry, Application $application) {
+            $timestamp = $application->applied_at ?? $application->created_at;
+
+            if (! $timestamp) {
+                return $carry;
+            }
+
+            $date = $timestamp instanceof Carbon ? $timestamp : Carbon::parse($timestamp);
+            $key = $date->copy()->startOfMonth()->format('Y-m');
+
+            $carry[$key] = ($carry[$key] ?? 0) + 1;
+
+            return $carry;
+        }, []);
+
+        $currentMonth = Carbon::now()->startOfMonth();
+
+        return collect(range($months - 1, 0))
+            ->map(fn (int $index) => $currentMonth->copy()->subMonths($index))
+            ->map(function (Carbon $month) use ($buckets) {
+                $key = $month->format('Y-m');
+
+                return [
+                    'period' => $key,
+                    'label' => $month->format('M Y'),
+                    'count' => $buckets[$key] ?? 0,
                 ];
             })
             ->values()
