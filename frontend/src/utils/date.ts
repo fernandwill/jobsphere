@@ -24,7 +24,7 @@ export const formatRelativeTime = (date?: string | number | Date | null) => {
   const deltaSeconds = (value.getTime() - Date.now()) / 1000;
 
   let duration = Math.abs(deltaSeconds);
-  let item = DIVISIONS[0];
+  let item: (typeof DIVISIONS)[number] = DIVISIONS[0];
 
   for (const division of DIVISIONS) {
     if (duration < division.amount) {

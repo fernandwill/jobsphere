@@ -1,22 +1,30 @@
 import {
+    Alert,
     Box,
+    Button,
     Card,
     CardContent,
     Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     Divider,
     Grid,
     LinearProgress,
     List,
     ListItem,
     ListItemText,
+    MenuItem,
     Stack,
+    TextField,
     Typography,
 } from '@mui/material';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import WorkHistoryRoundedIcon from '@mui/icons-material/WorkHistoryRounded';
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
 import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
     ArcElement,
     BarElement,
@@ -27,6 +35,8 @@ import {
     Tooltip,
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
+import axios from 'axios';
+import { router, usePage } from '@inertiajs/react';
 import MainLayout from '../Layout/MainLayout';
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
@@ -52,6 +62,42 @@ const getPipelineStatusLabel = (status, fallback) =>
 const getPipelineStatusColor = (status) =>
     PIPELINE_STATUS_META[status]?.color ?? 'default';
 
+const APPLICATION_STATUS_OPTIONS = [
+    { value: 'applied', label: 'Applied' },
+    { value: 'online_assessment', label: 'Online Assessment' },
+    { value: 'interview', label: 'Interview' },
+    { value: 'passed', label: 'Passed' },
+    { value: 'rejected', label: 'Rejected' },
+];
+
+const WORK_MODE_OPTIONS = [
+    { value: 'remote', label: 'Remote' },
+    { value: 'hybrid', label: 'Hybrid' },
+    { value: 'onsite', label: 'Onsite' },
+];
+
+const MANUAL_APPLICATION_DEFAULTS = {
+    company: '',
+    job_title: '',
+    location: '',
+    mode: '',
+    status: 'applied',
+    job_url: '',
+    applied_at: '',
+    notes: '',
+};
+
+const normalizeErrors = (errors) =>
+    Object.entries(errors ?? {}).reduce((accumulator, [key, value]) => {
+        if (Array.isArray(value)) {
+            accumulator[key] = value[0];
+        } else if (value) {
+            accumulator[key] = value;
+        }
+
+        return accumulator;
+    }, {});
+
 export default function Dashboard({
     stats = [],
     pipeline = [],
@@ -60,6 +106,154 @@ export default function Dashboard({
     statusDistribution = [],
     applicationsByPeriod = [],
 }) {
+    const { props } = usePage();
+    const csrfToken =
+        props?.csrf_token ??
+        (typeof document !== 'undefined'
+            ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            : null);
+
+    const [scrapeDialogOpen, setScrapeDialogOpen] = useState(false);
+    const [scrapeKeyword, setScrapeKeyword] = useState('');
+    const [scrapeSubmitting, setScrapeSubmitting] = useState(false);
+    const [scrapeErrors, setScrapeErrors] = useState({});
+
+    const [manualDialogOpen, setManualDialogOpen] = useState(false);
+    const [manualForm, setManualForm] = useState(MANUAL_APPLICATION_DEFAULTS);
+    const [manualSubmitting, setManualSubmitting] = useState(false);
+    const [manualErrors, setManualErrors] = useState({});
+
+    const dispatchFlash = (message, type = 'success') => {
+        if (!message || typeof window === 'undefined') {
+            return;
+        }
+
+        window.dispatchEvent(
+            new CustomEvent('jobsphere:flash', {
+                detail: { type, message },
+            })
+        );
+    };
+
+    const refreshDashboard = () => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        router.visit(window.location.href, {
+            preserveScroll: true,
+            preserveState: false,
+            replace: true,
+        });
+    };
+
+    const handleScrapeSubmit = async (event) => {
+        event.preventDefault();
+
+        setScrapeSubmitting(true);
+        setScrapeErrors({});
+
+        try {
+            await axios.post(
+                '/api/scrapes',
+                {
+                    keyword: scrapeKeyword,
+                },
+                {
+                    headers: csrfToken
+                        ? {
+                              'X-CSRF-TOKEN': csrfToken,
+                          }
+                        : undefined,
+                }
+            );
+
+            setScrapeSubmitting(false);
+            setScrapeDialogOpen(false);
+            setScrapeKeyword('');
+            dispatchFlash('Scrape queued successfully.');
+            refreshDashboard();
+        } catch (error) {
+            const response = error?.response;
+            const normalizedErrors = normalizeErrors(response?.data?.errors);
+            const message =
+                response?.data?.message ??
+                error?.message ??
+                'Unable to queue the scrape. Please try again.';
+
+            setScrapeErrors({
+                ...normalizedErrors,
+                ...(normalizedErrors?.keyword ? {} : { general: message }),
+            });
+            setScrapeSubmitting(false);
+
+            if (!normalizedErrors?.keyword) {
+                dispatchFlash(message, 'error');
+            }
+        }
+    };
+
+    const handleManualFieldChange = (event) => {
+        const { name, value } = event.target;
+
+        setManualForm((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    const handleManualSubmit = async (event) => {
+        event.preventDefault();
+
+        setManualSubmitting(true);
+        setManualErrors({});
+
+        const payload = {
+            company: manualForm.company,
+            job_title: manualForm.job_title,
+            source: 'manual',
+        };
+
+        ['location', 'mode', 'status', 'job_url', 'applied_at', 'notes'].forEach((field) => {
+            if (manualForm[field]) {
+                payload[field] = manualForm[field];
+            }
+        });
+
+        try {
+            await axios.post('/api/applications', payload, {
+                headers: csrfToken
+                    ? {
+                          'X-CSRF-TOKEN': csrfToken,
+                      }
+                    : undefined,
+            });
+
+            setManualSubmitting(false);
+            setManualDialogOpen(false);
+            setManualForm(MANUAL_APPLICATION_DEFAULTS);
+            dispatchFlash('Application logged successfully.');
+            refreshDashboard();
+        } catch (error) {
+            const response = error?.response;
+            const normalizedErrors = normalizeErrors(response?.data?.errors);
+            const message =
+                response?.data?.message ??
+                error?.message ??
+                'Unable to save the application. Please try again.';
+
+            setManualErrors({
+                ...normalizedErrors,
+                ...(Object.keys(normalizedErrors).length ? {} : { general: message }),
+            });
+            setManualSubmitting(false);
+
+            if (!Object.keys(normalizedErrors).length) {
+                dispatchFlash(message, 'error');
+            }
+        }
+    };
+
     const statusChartData = useMemo(() => {
         if (!statusDistribution.length) {
             return null;
@@ -108,12 +302,48 @@ export default function Dashboard({
     return (
         <Stack spacing={5}>
             <Box>
-                <Typography variant="h4" fontWeight={700} gutterBottom>
-                    Stay on top of your job hunt
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                    Monitor pipeline health, recent activity, and upcoming follow-ups in a single view.
-                </Typography>
+                <Stack
+                    direction={{ xs: 'column', md: 'row' }}
+                    spacing={3}
+                    alignItems={{ xs: 'flex-start', md: 'center' }}
+                    justifyContent="space-between"
+                >
+                    <Box>
+                        <Typography variant="h4" fontWeight={700} gutterBottom>
+                            Stay on top of your job hunt
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary">
+                            Monitor pipeline health, recent activity, and upcoming follow-ups in a single view.
+                        </Typography>
+                    </Box>
+
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} width={{ xs: '100%', md: 'auto' }}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => {
+                                setScrapeKeyword('');
+                                setScrapeErrors({});
+                                setScrapeDialogOpen(true);
+                            }}
+                            sx={{ width: { xs: '100%', sm: 'auto' } }}
+                        >
+                            Scrape company
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            color="secondary"
+                            onClick={() => {
+                                setManualForm(MANUAL_APPLICATION_DEFAULTS);
+                                setManualErrors({});
+                                setManualDialogOpen(true);
+                            }}
+                            sx={{ width: { xs: '100%', sm: 'auto' } }}
+                        >
+                            Log manual application
+                        </Button>
+                    </Stack>
+                </Stack>
             </Box>
 
             <Grid container spacing={3}>
@@ -350,6 +580,193 @@ export default function Dashboard({
                     )}
                 </Grid>
             )}
+
+            <Dialog
+                open={scrapeDialogOpen}
+                onClose={() => {
+                    if (!scrapeSubmitting) {
+                        setScrapeDialogOpen(false);
+                    }
+                }}
+                fullWidth
+                maxWidth="sm"
+            >
+                <form onSubmit={handleScrapeSubmit}>
+                    <DialogTitle>Scrape a company</DialogTitle>
+                    <DialogContent dividers>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Enter a company keyword to queue a new scrape job. The latest postings will appear here once
+                            the scrape finishes.
+                        </Typography>
+
+                        {scrapeErrors?.general && (
+                            <Alert severity="error" sx={{ mb: 2 }}>
+                                {scrapeErrors.general}
+                            </Alert>
+                        )}
+
+                        <TextField
+                            autoFocus
+                            fullWidth
+                            label="Company keyword"
+                            name="keyword"
+                            value={scrapeKeyword}
+                            onChange={(event) => setScrapeKeyword(event.target.value)}
+                            required
+                            error={Boolean(scrapeErrors?.keyword)}
+                            helperText={scrapeErrors?.keyword ?? ' '}
+                        />
+                    </DialogContent>
+                    <DialogActions>
+                        <Button
+                            onClick={() => {
+                                if (!scrapeSubmitting) {
+                                    setScrapeDialogOpen(false);
+                                }
+                            }}
+                            disabled={scrapeSubmitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={scrapeSubmitting || !scrapeKeyword.trim()}
+                        >
+                            {scrapeSubmitting ? 'Queuing…' : 'Start scrape'}
+                        </Button>
+                    </DialogActions>
+                </form>
+            </Dialog>
+
+            <Dialog
+                open={manualDialogOpen}
+                onClose={() => {
+                    if (!manualSubmitting) {
+                        setManualDialogOpen(false);
+                    }
+                }}
+                fullWidth
+                maxWidth="sm"
+            >
+                <form onSubmit={handleManualSubmit}>
+                    <DialogTitle>Log a manual application</DialogTitle>
+                    <DialogContent dividers>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Capture an opportunity you found manually so it stays in sync with your pipeline.
+                        </Typography>
+
+                        {manualErrors?.general && (
+                            <Alert severity="error" sx={{ mb: 2 }}>
+                                {manualErrors.general}
+                            </Alert>
+                        )}
+
+                        <Stack spacing={2}>
+                            <TextField
+                                label="Company"
+                                name="company"
+                                value={manualForm.company}
+                                onChange={handleManualFieldChange}
+                                required
+                                error={Boolean(manualErrors?.company)}
+                                helperText={manualErrors?.company ?? ''}
+                            />
+                            <TextField
+                                label="Role title"
+                                name="job_title"
+                                value={manualForm.job_title}
+                                onChange={handleManualFieldChange}
+                                required
+                                error={Boolean(manualErrors?.job_title)}
+                                helperText={manualErrors?.job_title ?? ''}
+                            />
+                            <TextField
+                                label="Location"
+                                name="location"
+                                value={manualForm.location}
+                                onChange={handleManualFieldChange}
+                                error={Boolean(manualErrors?.location)}
+                                helperText={manualErrors?.location ?? ''}
+                            />
+                            <TextField
+                                select
+                                label="Work mode"
+                                name="mode"
+                                value={manualForm.mode}
+                                onChange={handleManualFieldChange}
+                                error={Boolean(manualErrors?.mode)}
+                                helperText={manualErrors?.mode ?? ''}
+                            >
+                                <MenuItem value="">Select…</MenuItem>
+                                {WORK_MODE_OPTIONS.map((option) => (
+                                    <MenuItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                            <TextField
+                                select
+                                label="Status"
+                                name="status"
+                                value={manualForm.status}
+                                onChange={handleManualFieldChange}
+                                error={Boolean(manualErrors?.status)}
+                                helperText={manualErrors?.status ?? ''}
+                            >
+                                {APPLICATION_STATUS_OPTIONS.map((option) => (
+                                    <MenuItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                            <TextField
+                                label="Job URL"
+                                name="job_url"
+                                value={manualForm.job_url}
+                                onChange={handleManualFieldChange}
+                                error={Boolean(manualErrors?.job_url)}
+                                helperText={manualErrors?.job_url ?? ''}
+                            />
+                            <TextField
+                                label="Applied on"
+                                name="applied_at"
+                                type="date"
+                                value={manualForm.applied_at}
+                                onChange={handleManualFieldChange}
+                                InputLabelProps={{ shrink: true }}
+                                error={Boolean(manualErrors?.applied_at)}
+                                helperText={manualErrors?.applied_at ?? ''}
+                            />
+                            <TextField
+                                label="Notes"
+                                name="notes"
+                                value={manualForm.notes}
+                                onChange={handleManualFieldChange}
+                                multiline
+                                minRows={3}
+                                error={Boolean(manualErrors?.notes)}
+                                helperText={manualErrors?.notes ?? ''}
+                            />
+                        </Stack>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button
+                            onClick={() => {
+                                if (!manualSubmitting) {
+                                    setManualDialogOpen(false);
+                                }
+                            }}
+                            disabled={manualSubmitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" variant="contained" disabled={manualSubmitting}>
+                            {manualSubmitting ? 'Saving…' : 'Save application'}
+                        </Button>
+                    </DialogActions>
+                </form>
+            </Dialog>
         </Stack>
     );
 }

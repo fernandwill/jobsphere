@@ -32,6 +32,48 @@ const App = () => {
     byStatus: { ...DEFAULT_COUNTS.byStatus },
   });
 
+  const handleScrapeCreated = useCallback(
+    (job: ScrapeJob) => {
+      setScrapeJobs((previous) => [job, ...previous]);
+      setActivity((previous) => [
+        {
+          id: `scrape-${job.id}`,
+          timestamp: new Date().toISOString(),
+          summary: `Queued scrape for ${job.company}`,
+          details: `Keyword: ${job.keyword}`,
+          status: 'applied',
+          company: job.company,
+        },
+        ...previous,
+      ]);
+    },
+    []
+  );
+
+  const handleApplicationCreated = useCallback((application: JobApplication) => {
+    setApplications((previous) => [application, ...previous]);
+    setCounts((previous) => {
+      const nextByStatus = { ...previous.byStatus };
+      nextByStatus[application.status] = (nextByStatus[application.status] ?? 0) + 1;
+
+      return {
+        total: (previous.total ?? 0) + 1,
+        byStatus: nextByStatus,
+      };
+    });
+    setActivity((previous) => [
+      {
+        id: `application-${application.id}`,
+        timestamp: new Date().toISOString(),
+        summary: `Logged ${application.title}`,
+        details: application.company,
+        status: application.status,
+        company: application.company,
+      },
+      ...previous,
+    ]);
+  }, []);
+
   const fetchScrapeJobs = useCallback(async () => {
     try {
       setRefreshing(true);
@@ -133,7 +175,13 @@ const App = () => {
       <div className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(circle_at_bottom,_rgba(34,211,238,0.15),transparent_60%)]" />
 
       <main className="relative mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 pb-16 pt-12">
-        <DashboardHeader userName="Alex" pendingScrapes={pendingScrapes} />
+        <DashboardHeader
+          userName="Alex"
+          pendingScrapes={pendingScrapes}
+          apiBaseUrl={API_BASE_URL}
+          onScrapeCreated={handleScrapeCreated}
+          onApplicationCreated={handleApplicationCreated}
+        />
         <StatsGrid metrics={metrics} />
         <AnalyticsCharts counts={counts} applications={applications} />
 
