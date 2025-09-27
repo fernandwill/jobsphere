@@ -32,15 +32,18 @@ The goal of this phase is to initialize the project, set up the database, and im
 
 This phase focuses on building the functionality to scrape job data from company websites.
 
-- [ ] **1. Install Scraping Tools:**
+- [v] **1. Install Scraping Tools:**
     - `composer require fabpot/goutte`
-- [ ] **2. Create Scraping Service:**
+    - _Status:_ Goutte is already in use via the injected HTTP client within [`app/Services/ScraperService.php`](../backend/app/Services/ScraperService.php).
+- [v] **2. Create Scraping Service:**
     - Build a dedicated PHP class (`Services/ScraperService.php`) to handle the logic of fetching and parsing HTML.
+    - _Implemented:_ [`ScraperService`](../backend/app/Services/ScraperService.php) encapsulates the Remotive API integration and fallback dataset mapping.
 - [ ] **3. Create Scraping Command:**
     - `php artisan make:command ScrapeCompanyCommand`
     - Implement the command to accept a company name/URL and use the `ScraperService`.
-- [ ] **4. Set Up Queues:**
+- [v] **4. Set Up Queues:**
     - Configure Redis or a database driver for background jobs in `.env`.
+    - _Implemented:_ Scrape requests dispatch [`ScrapeCompanyJob`](../backend/app/Jobs/ScrapeCompanyJob.php), which persists job results and status updates.
 - [ ] **5. Build Scraping UI:**
     - Create a simple form on the dashboard where a user can input a company name.
     - The form submission should dispatch a queued job that runs the scraping command.
@@ -51,11 +54,13 @@ This phase focuses on building the functionality to scrape job data from company
 
 This phase involves creating the system for users to track their job applications.
 
-- [ ] **1. Create Application Model & Migration:**
+- [v] **1. Create Application Model & Migration:**
     - `php artisan make:model Application -m`
     - Define the schema in the migration file: `user_id`, `company`, `job_title`, `url`, `status`.
-- [ ] **2. Define Status Enum:**
+    - _Implemented:_ See [`app/Models/Application.php`](../backend/app/Models/Application.php) for the Eloquent model and casts.
+- [v] **2. Define Status Enum:**
     - Create a PHP Enum for the statuses: `Applied`, `OnlineAssessment`, `Interview`, `Passed`, `Rejected`.
+    - _Implemented:_ The enum lives at [`app/Enums/ApplicationStatus.php`](../backend/app/Enums/ApplicationStatus.php) and is used throughout the dashboard/report builders.
 - [ ] **3. Build "Add Application" Feature:**
     - Create a form (or button on scraped results) to add a new tracked application.
     - Write the controller logic to store the new application in the database.
@@ -73,10 +78,12 @@ This phase involves creating the system for users to track their job application
 
 This phase is about creating the main dashboard to visualize the user's job search data.
 
-- [ ] **1. Create Dashboard Controller:**
+- [v] **1. Create Dashboard Controller:**
     - Write a controller method that fetches all of the user's application data.
-- [ ] **2. Calculate Statistics:**
+    - _Implemented:_ [`DashboardController`](../backend/app/Http/Controllers/DashboardController.php) aggregates scrape requests, pipeline data, and analytics for the Inertia view.
+- [v] **2. Calculate Statistics:**
     - Add logic to the controller to count applications by status and group them by date.
+    - _Implemented:_ [`ApplicationReportBuilder`](../backend/app/Support/ApplicationReportBuilder.php) supplies pipeline/activity metrics consumed by the dashboard.
 - [ ] **3. Install Charting Library:**
     - `npm install chart.js` or another library of your choice.
 - [ ] **4. Build Dashboard Components:**
