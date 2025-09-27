@@ -24,7 +24,7 @@ The goal of this phase is to initialize the project, set up the database, and im
 - [v] **6. Set Up Frontend Scaffolding:**
     - Implemented a standalone Vite + React SPA with Tailwind CSS.
     - Established component architecture (e.g., pipeline board, stats grid, scrape panel) powered by mock data.
-    - _Note:_ Material UI/Inertia.js were not adopted; custom Tailwind styling is in place instead.
+    - _Note:_ The production dashboard now ships through Laravel Inertia + Material UI, while the Tailwind SPA remains available for experimentation.
 
 ---
 

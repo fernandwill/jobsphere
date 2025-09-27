@@ -32,19 +32,21 @@ Your local development environment or production server must meet the following 
 
 This project is built on the following core technologies. You will need their respective package managers to install dependencies.
 
-* **Framework:** **Laravel** `^11.0`
+* **Framework:** **Laravel** `^12.0`
 * **PHP Package Manager:** **Composer** `^2.7`
 * **JavaScript Runtime:** **Node.js** `^20.11` (LTS recommended)
 * **JS Package Manager:** **npm** `^10.2` or **Yarn** `^1.22`
 
 ---
 
-### **UI Library**
+### **Backend UI Stack**
 
-The user interface for this project is built using:
+The authenticated dashboard that ships with the Laravel application uses the following stack:
 
-* **UI Framework:** **Tailwind CSS** `^3.0`
-* **Component Library:** **ShadCN** 
+* **Inertia React Adapter:** `@inertiajs/react` `^1.0`
+* **React Runtime:** `react` / `react-dom` `^18.0`
+* **Component Library:** **Material UI** (`@mui/material`) `^5.15`
+* **Styling Engine:** `@emotion/react` & `@emotion/styled` `^11.11`
 
 ---
 
@@ -57,3 +59,20 @@ To get the project running locally, you will need a development environment that
 * **Docker Desktop** with **Laravel Sail** (Cross-platform)
 
 These tools come pre-packaged with the required versions of PHP, a database, and other necessary services, simplifying the setup process significantly.
+
+---
+
+### **Client Applications & Build Targets**
+
+This repository currently serves two React entry points that live side by side:
+
+1. **Laravel + Inertia Dashboard** (backend/resources/js)
+    * Driven by the Laravel application and rendered via Inertia responses.
+    * Uses Material UI components to deliver the authenticated user dashboard.
+    * Bundled through the Laravel Vite pipeline (`php artisan serve` and `npm run dev` from `backend/`).
+2. **Standalone Tailwind SPA** (`frontend/` directory)
+    * A separate Vite + React application that experiments with pipeline boards and other UX concepts using Tailwind CSS.
+    * Runs independently from the Laravel app (`npm install` then `npm run dev` from `frontend/`).
+    * Ideal for rapid prototyping without touching the Inertia-powered dashboard.
+
+Contributors can iterate on either surface independently. Shared business logic should continue to live in Laravel services or dedicated API routes so that both clients can consume the same data sources.
