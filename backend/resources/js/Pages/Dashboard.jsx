@@ -16,7 +16,20 @@ import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import WorkHistoryRoundedIcon from '@mui/icons-material/WorkHistoryRounded';
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
 import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
-import MainLayout from '../Layouts/MainLayout';
+import { useMemo } from 'react';
+import {
+    ArcElement,
+    BarElement,
+    CategoryScale,
+    Chart as ChartJS,
+    Legend,
+    LinearScale,
+    Tooltip,
+} from 'chart.js';
+import { Bar, Pie } from 'react-chartjs-2';
+import MainLayout from '../Layout/MainLayout';
+
+ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 const STAT_ICONS = {
     growth: TrendingUpRoundedIcon,
@@ -36,7 +49,59 @@ const stagePalette = {
     failed: 'error',
 };
 
-export default function Dashboard({ stats = [], pipeline = [], activity = [], followUps = [] }) {
+export default function Dashboard({
+    stats = [],
+    pipeline = [],
+    activity = [],
+    followUps = [],
+    statusDistribution = [],
+    applicationsByPeriod = [],
+}) {
+    const statusChartData = useMemo(() => {
+        if (!statusDistribution.length) {
+            return null;
+        }
+
+        const labels = statusDistribution.map((item) => item.label);
+        const counts = statusDistribution.map((item) => item.count);
+        const backgroundColor = ['#818CF8', '#F472B6', '#FACC15', '#34D399', '#38BDF8'];
+
+        return {
+            labels,
+            datasets: [
+                {
+                    label: 'Applications',
+                    data: counts,
+                    backgroundColor,
+                    borderWidth: 0,
+                },
+            ],
+        };
+    }, [statusDistribution]);
+
+    const applicationsTrendData = useMemo(() => {
+        if (!applicationsByPeriod.length) {
+            return null;
+        }
+
+        const labels = applicationsByPeriod.map((item) => item.label);
+        const counts = applicationsByPeriod.map((item) => item.count);
+
+        return {
+            labels,
+            datasets: [
+                {
+                    label: 'Applications submitted',
+                    data: counts,
+                    backgroundColor: 'rgba(99,102,241,0.35)',
+                    borderColor: 'rgba(99,102,241,0.9)',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                },
+            ],
+        };
+    }, [applicationsByPeriod]);
+
     return (
         <Stack spacing={5}>
             <Box>
@@ -181,65 +246,102 @@ export default function Dashboard({ stats = [], pipeline = [], activity = [], fo
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                    <Stack spacing={3} height="100%">
-                        <Card>
-                            <CardContent>
-                                <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-                                    Upcoming follow-ups
-                                </Typography>
-                                <Stack spacing={2}>
-                                    {followUps.map((followUp) => (
-                                        <Box key={`${followUp.company}-${followUp.role}`}>
-                                            <Typography fontWeight={600}>{followUp.role}</Typography>
-                                            <Typography variant="body2" color="text.secondary">
-                                                {followUp.company}
-                                            </Typography>
-                                            <LinearProgress
-                                                variant="determinate"
-                                                value={followUp.completion ?? 0}
-                                                sx={{ mt: 1.5 }}
-                                            />
-                                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                                Follow up in {followUp.due_in}
-                                            </Typography>
-                                        </Box>
-                                    ))}
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                        <Card sx={{ flex: 1 }}>
-                            <CardContent>
-                                <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-                                    Weekly goals
-                                </Typography>
-                                <Stack spacing={2}>
-                                    <GoalProgress label="Applications sent" value={8} target={10} />
-                                    <GoalProgress label="Networking outreaches" value={5} target={6} />
-                                    <GoalProgress label="Interviews scheduled" value={2} target={3} />
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                    </Stack>
+                    <Card sx={{ height: '100%' }}>
+                        <CardContent>
+                            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+                                Upcoming follow-ups
+                            </Typography>
+                            <Stack spacing={2}>
+                                {followUps.map((followUp) => (
+                                    <Box key={`${followUp.company}-${followUp.role}`}>
+                                        <Typography fontWeight={600}>{followUp.role}</Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {followUp.company}
+                                        </Typography>
+                                        <LinearProgress
+                                            variant="determinate"
+                                            value={followUp.completion ?? 0}
+                                            sx={{ mt: 1.5 }}
+                                        />
+                                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                            Follow up in {followUp.due_in}
+                                        </Typography>
+                                    </Box>
+                                ))}
+                            </Stack>
+                        </CardContent>
+                    </Card>
                 </Grid>
             </Grid>
+
+            {(statusChartData || applicationsTrendData) && (
+                <Grid container spacing={3} alignItems="stretch">
+                    {statusChartData && (
+                        <Grid item xs={12} md={4}>
+                            <Card sx={{ height: '100%' }}>
+                                <CardContent>
+                                    <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+                                        Application status mix
+                                    </Typography>
+                                    <Box sx={{ height: 280 }}>
+                                        <Pie
+                                            data={statusChartData}
+                                            options={{
+                                                plugins: {
+                                                    legend: {
+                                                        position: 'bottom',
+                                                    },
+                                                },
+                                                maintainAspectRatio: false,
+                                            }}
+                                        />
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    )}
+                    {applicationsTrendData && (
+                        <Grid item xs={12} md={8}>
+                            <Card sx={{ height: '100%' }}>
+                                <CardContent>
+                                    <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+                                        Applications over time
+                                    </Typography>
+                                    <Box sx={{ height: 280 }}>
+                                        <Bar
+                                            data={applicationsTrendData}
+                                            options={{
+                                                responsive: true,
+                                                maintainAspectRatio: false,
+                                                plugins: {
+                                                    legend: {
+                                                        display: false,
+                                                    },
+                                                },
+                                                scales: {
+                                                    y: {
+                                                        beginAtZero: true,
+                                                        ticks: {
+                                                            precision: 0,
+                                                        },
+                                                    },
+                                                    x: {
+                                                        grid: {
+                                                            display: false,
+                                                        },
+                                                    },
+                                                },
+                                            }}
+                                        />
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    )}
+                </Grid>
+            )}
         </Stack>
     );
 }
 
 Dashboard.layout = (page) => <MainLayout title="Dashboard">{page}</MainLayout>;
-
-function GoalProgress({ label, value, target }) {
-    const progress = Math.min(100, Math.round((value / target) * 100));
-
-    return (
-        <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography fontWeight={600}>{label}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                    {value}/{target}
-                </Typography>
-            </Stack>
-            <LinearProgress variant="determinate" value={progress} sx={{ mt: 1 }} />
-        </Box>
-    );
-}
