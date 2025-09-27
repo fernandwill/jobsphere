@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     AppBar,
@@ -25,11 +25,46 @@ export default function MainLayout({ title = 'Dashboard', children }) {
     const { auth = {}, flash = {} } = props ?? {};
     const user = auth?.user;
 
-    const [flashOpen, setFlashOpen] = useState(Boolean(flash?.success || flash?.error));
+    const [clientFlash, setClientFlash] = useState(null);
+    const flashMessage = useMemo(
+        () => clientFlash?.message ?? flash?.error ?? flash?.success ?? null,
+        [clientFlash?.message, flash?.error, flash?.success]
+    );
+    const flashSeverity = clientFlash?.type ?? (flash?.error ? 'error' : 'success');
+    const [flashOpen, setFlashOpen] = useState(Boolean(flashMessage));
 
     useEffect(() => {
-        setFlashOpen(Boolean(flash?.success || flash?.error));
-    }, [flash?.success, flash?.error]);
+        setFlashOpen(Boolean(flashMessage));
+    }, [flashMessage]);
+
+    useEffect(() => {
+        const handler = (event) => {
+            const detail = event?.detail ?? {};
+
+            if (!detail?.message) {
+                return;
+            }
+
+            setClientFlash({
+                type: detail.type ?? 'success',
+                message: detail.message,
+            });
+        };
+
+        window.addEventListener('jobsphere:flash', handler);
+
+        return () => {
+            window.removeEventListener('jobsphere:flash', handler);
+        };
+    }, []);
+
+    const handleFlashClose = () => {
+        setFlashOpen(false);
+
+        if (clientFlash) {
+            setClientFlash(null);
+        }
+    };
 
     const handleLogout = () => {
         router.post('/logout');
@@ -116,22 +151,22 @@ export default function MainLayout({ title = 'Dashboard', children }) {
 
             <Container component="main" maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
                 <Collapse in={flashOpen} unmountOnExit>
-                    {(flash?.success || flash?.error) && (
+                    {flashMessage && (
                         <Alert
-                            severity={flash?.error ? 'error' : 'success'}
+                            severity={flashSeverity === 'error' ? 'error' : flashSeverity}
                             variant="filled"
                             sx={{ mb: 4, borderRadius: 3 }}
                             action={
                                 <IconButton
                                     size="small"
                                     color="inherit"
-                                    onClick={() => setFlashOpen(false)}
+                                    onClick={handleFlashClose}
                                 >
                                     <CloseRoundedIcon fontSize="small" />
                                 </IconButton>
                             }
                         >
-                            {flash?.error ?? flash?.success}
+                            {flashMessage}
                         </Alert>
                     )}
                 </Collapse>
