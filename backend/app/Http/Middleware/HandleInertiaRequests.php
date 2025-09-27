@@ -11,7 +11,9 @@ class HandleInertiaRequests {
     public function handle(Request $request, Closure $next): Response {
         Inertia::share([
             'auth' => [
-                'user' => static fn () => request->user()?->only(['id', 'name', 'email', 'avatar']),
+                'user' => static fn () => ($user = request()->user())
+                    ? $user->only(['id', 'name', 'email', 'avatar'])
+                    : null,
             ],
             'flash' => [
                 'success' => static fn () => $request->session()->get('success'),
