@@ -1,0 +1,16 @@
+{
+    "name": "fabpot/goutte",
+    "description": "Lightweight scraping client",
+    "type": "library",
+    "version": "4.0.4",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Goutte\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=8.2",
+        "guzzlehttp/guzzle": "^7.0"
+    }
+}

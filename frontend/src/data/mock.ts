@@ -1,7 +1,6 @@
 import type {
   ActivityLogItem,
   JobApplication,
-  ScrapeJob,
   StatusMeta,
 } from '../types';
 
@@ -43,7 +42,7 @@ export const MOCK_APPLICATIONS: JobApplication[] = [
     id: 'app-245',
     title: 'Senior Frontend Engineer',
     company: 'Stripe',
-    location: 'Remote · AMER',
+    location: 'Remote  AMER',
     mode: 'remote',
     status: 'interview',
     source: 'scraped',
@@ -66,7 +65,7 @@ export const MOCK_APPLICATIONS: JobApplication[] = [
     id: 'app-201',
     title: 'Staff Platform Engineer',
     company: 'Vercel',
-    location: 'Remote · Global',
+    location: 'Remote  Global',
     mode: 'remote',
     status: 'applied',
     source: 'scraped',
@@ -99,39 +98,12 @@ export const MOCK_APPLICATIONS: JobApplication[] = [
     id: 'app-275',
     title: 'Data Visualization Engineer',
     company: 'Figma',
-    location: 'Remote · AMER',
+    location: 'Remote  AMER',
     mode: 'remote',
     status: 'applied',
     source: 'scraped',
     postedAt: '2025-09-19',
     lastActivity: '2025-09-19T09:05:00Z',
-  },
-];
-
-export const MOCK_SCRAPE_JOBS: ScrapeJob[] = [
-  {
-    id: 'scrape-100',
-    company: 'Snowflake',
-    roleCount: 12,
-    startedAt: '2025-09-19T19:32:00Z',
-    eta: '2m',
-    status: 'running',
-  },
-  {
-    id: 'scrape-099',
-    company: 'Datadog',
-    roleCount: 5,
-    startedAt: '2025-09-19T18:05:00Z',
-    eta: 'completed',
-    status: 'succeeded',
-  },
-  {
-    id: 'scrape-098',
-    company: 'Chime',
-    roleCount: 0,
-    startedAt: '2025-09-19T17:20:00Z',
-    eta: 'retrying',
-    status: 'failed',
   },
 ];
 
