@@ -30,6 +30,10 @@ const stagePalette = {
     interviewing: 'secondary',
     offer: 'success',
     rejected: 'error',
+    queued: 'info',
+    running: 'warning',
+    succeeded: 'success',
+    failed: 'error',
 };
 
 export default function Dashboard({ stats = [], pipeline = [], activity = [], followUps = [] }) {

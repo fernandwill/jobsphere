@@ -10,8 +10,17 @@ const DIVISIONS = [
 
 const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
-export const formatRelativeTime = (date: string | number | Date) => {
+export const formatRelativeTime = (date?: string | number | Date | null) => {
+  if (!date) {
+    return 'just now';
+  }
+
   const value = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+
+  if (Number.isNaN(value.getTime())) {
+    return 'just now';
+  }
+
   const deltaSeconds = (value.getTime() - Date.now()) / 1000;
 
   let duration = Math.abs(deltaSeconds);

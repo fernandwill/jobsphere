@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import DashboardHeader from './components/DashboardHeader';
 import PipelineBoard from './components/PipelineBoard';
 import RecentApplications from './components/RecentApplications';
@@ -8,13 +9,60 @@ import {
   MOCK_ACTIVITY,
   MOCK_APPLICATIONS,
   MOCK_METRICS,
-  MOCK_SCRAPE_JOBS,
 } from './data/mock';
+import type { ScrapeJob } from './types';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 const App = () => {
-  const pendingScrapes = MOCK_SCRAPE_JOBS.filter((job) =>
-    ['queued', 'running'].includes(job.status)
-  ).length;
+  const [scrapeJobs, setScrapeJobs] = useState<ScrapeJob[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchScrapeJobs = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      const response = await fetch(`${API_BASE_URL}/api/scrapes`);
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      const payload = await response.json();
+      const data = Array.isArray(payload?.data) ? payload.data : [];
+
+      setScrapeJobs(
+        data.map((item: any) => ({
+          id: String(item.id),
+          keyword: item.keyword ?? '',
+          company: item.company ?? item.keyword ?? 'Unknown',
+          roleCount: Number(item.roleCount ?? 0),
+          queuedAt: item.queuedAt ?? item.queued_at ?? null,
+          startedAt: item.startedAt ?? item.started_at ?? null,
+          finishedAt: item.finishedAt ?? item.finished_at ?? null,
+          eta: item.eta ?? 'Pending',
+          status: item.status ?? 'queued',
+          error: item.error ?? item.error_message ?? null,
+        }))
+      );
+    } catch (error) {
+      console.error('Failed to load scrape jobs', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchScrapeJobs();
+
+    const interval = window.setInterval(fetchScrapeJobs, 10000);
+
+    return () => window.clearInterval(interval);
+  }, [fetchScrapeJobs]);
+
+  const pendingScrapes = useMemo(
+    () => scrapeJobs.filter((job) => ['queued', 'running'].includes(job.status)).length,
+    [scrapeJobs]
+  );
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
@@ -32,7 +80,7 @@ const App = () => {
           </div>
 
           <div className="flex flex-col gap-6">
-            <ScrapeJobsPanel jobs={MOCK_SCRAPE_JOBS} />
+            <ScrapeJobsPanel jobs={scrapeJobs} refreshing={refreshing} onRefresh={fetchScrapeJobs} />
             <ActivityTimeline items={MOCK_ACTIVITY} />
           </div>
         </div>

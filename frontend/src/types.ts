@@ -23,11 +23,15 @@ export interface JobApplication {
 
 export interface ScrapeJob {
   id: string;
+  keyword: string;
   company: string;
   roleCount: number;
-  startedAt: string;
+  queuedAt?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
   eta: string;
   status: 'queued' | 'running' | 'succeeded' | 'failed';
+  error?: string | null;
 }
 
 export interface ActivityLogItem {

@@ -1,11 +1,12 @@
 import clsx from 'clsx';
 import { Radar, RefreshCw, Zap } from 'lucide-react';
-
 import type { ScrapeJob } from '../types';
 import { formatRelativeTime } from '../utils/date';
 
 type ScrapeJobsPanelProps = {
   jobs: ScrapeJob[];
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 const statusStyles = {
@@ -15,7 +16,7 @@ const statusStyles = {
   failed: 'border-rose-400/40 bg-rose-400/10 text-rose-200',
 } as const;
 
-const ScrapeJobsPanel = ({ jobs }: ScrapeJobsPanelProps) => {
+const ScrapeJobsPanel = ({ jobs, refreshing = false, onRefresh }: ScrapeJobsPanelProps) => {
   return (
     <section className="flex h-full flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-5">
       <header className="flex items-center justify-between text-sm text-white/70">
@@ -25,50 +26,64 @@ const ScrapeJobsPanel = ({ jobs }: ScrapeJobsPanelProps) => {
         </div>
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1 text-xs font-medium text-white/60 transition hover:text-white"
+          onClick={onRefresh}
+          disabled={refreshing}
+          className={clsx(
+            'inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1 text-xs font-medium transition',
+            refreshing ? 'cursor-not-allowed text-white/40' : 'text-white/60 hover:text-white'
+          )}
         >
-          <RefreshCw size={14} />
-          Refresh
+          <RefreshCw size={14} className={clsx(refreshing && 'animate-spin')} />
+          {refreshing ? 'Refreshing' : 'Refresh'}
         </button>
       </header>
 
-      <ul className="space-y-3 text-sm">
-        {jobs.map((job) => (
-          <li
-            key={job.id}
-            className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-white/90">{job.company}</p>
-                <p className="text-xs text-white/50">
-                  Discovered <strong className="text-white/80">{job.roleCount}</strong> role(s)
-                </p>
+      {jobs.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/60 p-6 text-center text-sm text-white/60">
+          No scrape jobs yet. Start a new search from the dashboard to populate this list.
+        </div>
+      ) : (
+        <ul className="space-y-3 text-sm">
+          {jobs.map((job) => (
+            <li key={job.id} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-white/90">{job.company}</p>
+                  <p className="text-xs text-white/50">
+                    Discovered <strong className="text-white/80">{job.roleCount}</strong> role(s)
+                  </p>
+                </div>
+                <span
+                  className={clsx(
+                    'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide',
+                    statusStyles[job.status]
+                  )}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+                  {job.status}
+                </span>
               </div>
-              <span
-                className={clsx(
-                  'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide',
-                  statusStyles[job.status]
-                )}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
-                {job.status}
-              </span>
-            </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-white/50">
-              <span className="inline-flex items-center gap-1">
-                <Zap size={14} />
-                Started {formatRelativeTime(job.startedAt)}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-white/30" aria-hidden />
-                ETA: {job.eta}
-              </span>
-            </div>
-          </li>
-        ))}
-      </ul>
+              <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-white/50">
+                <span className="inline-flex items-center gap-1">
+                  <Zap size={14} />
+                  Started {formatRelativeTime(job.startedAt ?? job.queuedAt ?? new Date())}
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-1 w-1 rounded-full bg-white/30" aria-hidden />
+                  ETA: {job.eta}
+                </span>
+                {job.error && job.status === 'failed' && (
+                  <span className="inline-flex items-center gap-2 text-rose-200">
+                    <span className="h-1 w-1 rounded-full bg-rose-400/70" aria-hidden />
+                    {job.error}
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 };
