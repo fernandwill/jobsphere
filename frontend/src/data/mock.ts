@@ -40,21 +40,15 @@ export const STATUS_META: StatusMeta[] = [
   },
 ];
 
+const STATUS_KEYS = STATUS_META.map((item) => item.key) as ApplicationStatus[];
+
 export const getStatusMeta = (status: StatusMeta['key']) =>
   STATUS_META.find((item) => item.key === status)!;
 
 const normaliseStatus = (value: unknown): ApplicationStatus => {
   const fallback: ApplicationStatus = 'applied';
   if (typeof value !== 'string') return fallback;
-  return (
-    [
-      'applied',
-      'online_assessment',
-      'interview',
-      'passed',
-      'rejected',
-    ] as ApplicationStatus[]
-  ).includes(value as ApplicationStatus)
+  return STATUS_KEYS.includes(value as ApplicationStatus)
     ? (value as ApplicationStatus)
     : fallback;
 };

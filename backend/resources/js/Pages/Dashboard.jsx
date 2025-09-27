@@ -38,16 +38,19 @@ const STAT_ICONS = {
     pipeline: WorkHistoryRoundedIcon,
 };
 
-const stagePalette = {
-    applied: 'primary',
-    interviewing: 'secondary',
-    offer: 'success',
-    rejected: 'error',
-    queued: 'info',
-    running: 'warning',
-    succeeded: 'success',
-    failed: 'error',
+const PIPELINE_STATUS_META = {
+    applied: { label: 'Applied', color: 'primary' },
+    online_assessment: { label: 'Online Assessment', color: 'info' },
+    interview: { label: 'Interview', color: 'secondary' },
+    passed: { label: 'Passed', color: 'success' },
+    rejected: { label: 'Rejected', color: 'error' },
 };
+
+const getPipelineStatusLabel = (status, fallback) =>
+    PIPELINE_STATUS_META[status]?.label ?? fallback ?? status;
+
+const getPipelineStatusColor = (status) =>
+    PIPELINE_STATUS_META[status]?.color ?? 'default';
 
 export default function Dashboard({
     stats = [],
@@ -166,14 +169,18 @@ export default function Dashboard({
                             <CardContent>
                                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                                     <Box>
-                                        <Typography variant="subtitle1" fontWeight={600} textTransform="capitalize">
-                                            {stage.stage}
+                                        <Typography variant="subtitle1" fontWeight={600}>
+                                            {stage.label ?? getPipelineStatusLabel(stage.stage)}
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary">
                                             {stage.summary}
                                         </Typography>
                                     </Box>
-                                    <Chip label={stage.count} color={stagePalette[stage.stage] ?? 'default'} size="small" />
+                                    <Chip
+                                        label={stage.count}
+                                        color={getPipelineStatusColor(stage.stage)}
+                                        size="small"
+                                    />
                                 </Stack>
 
                                 <Stack spacing={2}>
@@ -194,8 +201,11 @@ export default function Dashboard({
                                             <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
                                                 <Chip
                                                     size="small"
-                                                    label={job.status}
-                                                    color={stagePalette[stage.stage] ?? 'primary'}
+                                                    label={
+                                                        job.status_label
+                                                            ?? getPipelineStatusLabel(job.status)
+                                                    }
+                                                    color={getPipelineStatusColor(job.status)}
                                                 />
                                                 <Typography variant="caption" color="text.secondary">
                                                     {job.applied_at}

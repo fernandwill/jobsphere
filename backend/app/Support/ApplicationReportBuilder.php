@@ -50,7 +50,8 @@ class ApplicationReportBuilder
                                 'id' => (string) $application->getKey(),
                                 'role' => $application->job_title,
                                 'company' => $application->company,
-                                'status' => $status->label(),
+                                'status' => $status->value,
+                                'status_label' => $status->label(),
                                 'applied_at' => optional($appliedAt)->diffForHumans() ?? 'just now',
                             ];
                         })
